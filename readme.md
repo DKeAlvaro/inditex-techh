@@ -1,7 +1,12 @@
+
+
 # Inditex Data Visualization
 
 Una aplicación web simple en Flask que visualiza datos de Inditex, mostrando estadísticas sobre almacenes, productos y tiendas.
 
+![Inditex Data Visualization](readme_intro.png)
+
+---
 ## Características
 
 - Panel de estadísticas básicas
