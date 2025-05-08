@@ -2,6 +2,7 @@ from flask import Flask, render_template, jsonify, request
 import json
 import collections
 from gemini_api import get_response, get_data_insights
+import markdown
 
 app = Flask(__name__)
 
@@ -108,12 +109,16 @@ def ask_gemini():
     
     # Get response from Gemini
     response = get_response(question, data_context)
-    return jsonify({"answer": response})
+    # Convert markdown to HTML
+    html_response = markdown.markdown(response)
+    return jsonify({"answer": html_response})
 
 @app.route('/api/get_insights')
 def get_insights():
     insights = get_data_insights(warehouses, products, stores)
-    return jsonify({"insights": insights})
+    # Convert markdown to HTML
+    html_insights = markdown.markdown(insights)
+    return jsonify({"insights": html_insights})
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    app.run(host='0.0.0.0', port=5000) 

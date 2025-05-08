@@ -164,7 +164,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (data.error) {
                 responseContainer.innerHTML = `<p class="error">${data.error}</p>`;
             } else {
-                responseContainer.innerHTML = `<p class="answer-text">${data.answer}</p>`;
+                // Use innerHTML to render the HTML content returned
+                responseContainer.innerHTML = `<div class="markdown-content">${data.answer}</div>`;
             }
         } catch (error) {
             console.error('Error al consultar a Gemini:', error);
@@ -184,7 +185,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fetch('/api/get_insights')
         .then(response => response.json())
         .then(data => {
-            insightsContainer.innerHTML = data.insights;
+            // Use innerHTML to render the HTML content
+            insightsContainer.innerHTML = `<div class="markdown-content">${data.insights}</div>`;
         })
         .catch(error => {
             console.error('Error al cargar insights:', error);

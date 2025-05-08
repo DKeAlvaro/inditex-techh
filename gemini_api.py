@@ -36,9 +36,13 @@ def get_response(prompt, data=None):
             {prompt}
             
             Proporciona solo hechos basados en los datos proporcionados.
+            
+            Importante: Utiliza formato Markdown en tu respuesta, como ** para negrita, 
+            * para cursiva, ## para encabezados, y listas con - o números. Incluye 
+            esto para resaltar puntos importantes.
             """
         else:
-            full_prompt = prompt
+            full_prompt = f"{prompt}\n\nPor favor, utiliza formato Markdown en tu respuesta para resaltar puntos importantes."
         
         # Generate response
         response = model.generate_content(full_prompt)
@@ -86,8 +90,18 @@ def get_data_insights(warehouses, products, stores):
     Analiza los datos proporcionados sobre almacenes, productos y tiendas de Inditex.
     Proporciona 3 insights importantes sobre la distribución de productos, 
     almacenes y posibles oportunidades de optimización.
+    
+    Utiliza formato Markdown en tu respuesta:
+    - Usa **negrita** para resaltar conceptos clave
+    - Usa *cursiva* para enfatizar puntos importantes
+    - Usa ## para los títulos de cada insight
+    - Usa listas con - o números para enumerar datos o recomendaciones
+    - Usa > para citas o destacar información relevante
+    
+    Estructura tu respuesta con una introducción breve y luego los 3 insights.
     """
     
     return get_response(prompt, data_summary)
 
-print(get_response("Explain how AI works in a few words"))
+# Remove the test print to avoid unnecessary execution
+# print(get_response("Explain how AI works in a few words"))
