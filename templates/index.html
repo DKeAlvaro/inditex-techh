@@ -1,160 +1,71 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Delivery Optimization Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Análisis de Datos Inditex</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/leaflet@1.7.1/dist/leaflet.css" rel="stylesheet">
-    <style>
-        .chart-container {
-            position: relative;
-            height: 300px;
-            margin-bottom: 20px;
-        }
-        #map {
-            height: 400px;
-            margin-bottom: 20px;
-        }
-        .insights-container {
-            background-color: #f8f9fa;
-            padding: 20px;
-            border-radius: 5px;
-            margin-top: 20px;
-        }
-    </style>
 </head>
 <body>
-    <div class="container mt-4">
-        <h1 class="mb-4">Delivery Optimization Dashboard</h1>
+    <header>
+        <h1>Análisis de Datos Inditex</h1>
+    </header>
+    
+    <main>
+        <section class="stats-container">
+            <div class="stat-card" id="basic-stats">
+                <h2>Estadísticas Básicas</h2>
+                <div class="stat-content">
+                    <p>Cargando...</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <h2>Inventario por Talla</h2>
+                <div class="chart-container">
+                    <canvas id="sizeChart"></canvas>
+                </div>
+            </div>
+        </section>
         
-        <div class="row">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Warehouse Stock Distribution</h5>
-                        <div class="chart-container">
-                            <canvas id="stockChart"></canvas>
-                        </div>
+        <section class="stats-container full-width">
+            <div class="stat-card" id="gemini-card">
+                <h2>Consultar con IA</h2>
+                <div class="gemini-interface">
+                    <div class="gemini-input">
+                        <input type="text" id="question-input" placeholder="Pregunta sobre los datos de Inditex...">
+                        <button id="ask-button">Preguntar</button>
+                    </div>
+                    <div class="gemini-response" id="gemini-response">
+                        <p class="prompt-text">Puedes preguntar cosas como: <br>
+                        "¿Cuál es la talla más común en inventario?" <br>
+                        "¿Cuántos productos hay de la marca zara?" <br>
+                        "¿Qué productos tienen mayor inventario?"</p>
                     </div>
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Product Distribution</h5>
-                        <div class="chart-container">
-                            <canvas id="productChart"></canvas>
-                        </div>
-                    </div>
+        </section>
+        
+        <section class="stats-container full-width">
+            <div class="stat-card">
+                <h2>Top 10 Productos por Inventario</h2>
+                <div class="table-container" id="top-products-table">
+                    <p>Cargando...</p>
                 </div>
             </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Warehouse Locations</h5>
-                        <div id="map"></div>
-                    </div>
+        </section>
+        
+        <section class="stats-container full-width">
+            <div class="stat-card">
+                <h2>Insights de IA</h2>
+                <div class="insights-container" id="insights-container">
+                    <p>Cargando insights...</p>
                 </div>
             </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">AI-Powered Optimization Insights</h5>
-                        <div class="insights-container" id="insights">
-                            Loading insights...
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <script>
-        // Initialize map
-        const map = L.map('map').setView([0, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
-
-        // Fetch and display warehouse data
-        fetch('/api/warehouse-stats')
-            .then(response => response.json())
-            .then(data => {
-                // Create stock distribution chart
-                const stockCtx = document.getElementById('stockChart').getContext('2d');
-                new Chart(stockCtx, {
-                    type: 'bar',
-                    data: {
-                        labels: data.map(w => w.id),
-                        datasets: [{
-                            label: 'Total Stock',
-                            data: data.map(w => w.total_stock),
-                            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-                            borderColor: 'rgba(54, 162, 235, 1)',
-                            borderWidth: 1
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        scales: {
-                            y: {
-                                beginAtZero: true
-                            }
-                        }
-                    }
-                });
-
-                // Add markers to map
-                data.forEach(warehouse => {
-                    L.marker([warehouse.latitude, warehouse.longitude])
-                        .bindPopup(`<b>${warehouse.id}</b><br>Country: ${warehouse.country}<br>Total Stock: ${warehouse.total_stock}`)
-                        .addTo(map);
-                });
-            });
-
-        // Fetch and display product distribution
-        fetch('/api/product-distribution')
-            .then(response => response.json())
-            .then(data => {
-                const productCtx = document.getElementById('productChart').getContext('2d');
-                new Chart(productCtx, {
-                    type: 'pie',
-                    data: {
-                        labels: data.map(p => p.productId),
-                        datasets: [{
-                            data: data.map(p => p.total_quantity),
-                            backgroundColor: [
-                                'rgba(255, 99, 132, 0.5)',
-                                'rgba(54, 162, 235, 0.5)',
-                                'rgba(255, 206, 86, 0.5)',
-                                'rgba(75, 192, 192, 0.5)',
-                                'rgba(153, 102, 255, 0.5)'
-                            ]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false
-                    }
-                });
-            });
-
-        // Fetch and display AI insights
-        fetch('/api/optimization-insights')
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('insights').innerHTML = data.insights.replace(/\n/g, '<br>');
-            });
-    </script>
+        </section>
+    </main>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html> 

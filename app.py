@@ -1,90 +1,119 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 import json
-import pandas as pd
-import google.generativeai as genai
-import os
+import collections
+from gemini_api import get_response, get_data_insights
 
 app = Flask(__name__)
 
 # Load data
-def load_data():
-    with open('data/products.json', 'r') as f:
-        products = json.load(f)
-    with open('data/warehouses.json', 'r') as f:
-        warehouses = json.load(f)
-    with open('data/stores.json', 'r') as f:
-        stores = json.load(f)
-    return products, warehouses, stores
-
-# Initialize Gemini
-def init_gemini():
-    genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
-    model = genai.GenerativeModel('gemini-pro')
-    return model
+with open("data/warehouses.json", "r") as file:
+    warehouses = json.load(file)
+with open("data/products.json", "r") as file:
+    products = json.load(file)
+try:
+    with open("data/stores.json", "r") as file:
+        stores = json.load(file)
+except:
+    # Handle large file gracefully
+    stores = []
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/api/warehouse-stats')
-def warehouse_stats():
-    products, warehouses, stores = load_data()
-    
-    # Calculate warehouse statistics
-    warehouse_data = []
-    for warehouse in warehouses:
-        total_stock = sum(item['quantity'] for item in warehouse['stock'])
-        unique_products = len(set(item['productId'] for item in warehouse['stock']))
-        warehouse_data.append({
-            'id': warehouse['id'],
-            'country': warehouse['country'],
-            'total_stock': total_stock,
-            'unique_products': unique_products,
-            'latitude': warehouse['latitude'],
-            'longitude': warehouse['longitude']
-        })
-    
-    return jsonify(warehouse_data)
+@app.route('/api/basic_stats')
+def basic_stats():
+    return jsonify({
+        'warehouse_count': len(warehouses),
+        'product_count': len(products),
+        'store_count': len(stores)
+    })
 
-@app.route('/api/product-distribution')
-def product_distribution():
-    products, warehouses, stores = load_data()
-    
-    # Calculate product distribution across warehouses
-    product_data = {}
-    for warehouse in warehouses:
-        for item in warehouse['stock']:
-            if item['productId'] not in product_data:
-                product_data[item['productId']] = 0
-            product_data[item['productId']] += item['quantity']
-    
-    # Convert to list format for visualization
-    distribution_data = [{'productId': k, 'total_quantity': v} for k, v in product_data.items()]
-    return jsonify(distribution_data)
+@app.route('/api/brand_stats')
+def brand_stats():
+    brand_counts = collections.Counter([p["brandId"] for p in products])
+    return jsonify({
+        'brands': [{"name": brand, "count": count} for brand, count in brand_counts.most_common()]
+    })
 
-@app.route('/api/optimization-insights')
-def optimization_insights():
-    products, warehouses, stores = load_data()
+@app.route('/api/warehouse_countries')
+def warehouse_countries():
+    warehouse_countries = collections.Counter([w["country"] for w in warehouses])
+    return jsonify({
+        'countries': [{"name": country, "count": count} for country, count in warehouse_countries.most_common(10)]
+    })
+
+@app.route('/api/inventory_by_size')
+def inventory_by_size():
+    inventory_by_size = collections.defaultdict(int)
     
-    # Prepare data for Gemini
-    warehouse_summary = "\n".join([
-        f"Warehouse {w['id']} in {w['country']} has {sum(item['quantity'] for item in w['stock'])} total items"
-        for w in warehouses
-    ])
+    for warehouse in warehouses:
+        for item in warehouse["stock"]:
+            inventory_by_size[item["size"]] += item["quantity"]
     
-    # Get insights from Gemini
-    model = init_gemini()
-    prompt = f"""Based on the following warehouse data, provide 3 specific recommendations for optimizing delivery:
-    {warehouse_summary}
+    return jsonify({
+        'sizes': [{"size": size, "quantity": qty} for size, qty in sorted(inventory_by_size.items(), key=lambda x: x[1], reverse=True)]
+    })
+
+@app.route('/api/top_products')
+def top_products():
+    inventory_by_product = collections.defaultdict(int)
     
-    Focus on:
-    1. Geographic distribution
-    2. Stock levels
-    3. Potential bottlenecks
-    """
+    for warehouse in warehouses:
+        for item in warehouse["stock"]:
+            inventory_by_product[item["productId"]] += item["quantity"]
     
-    response = model.generate_content(prompt)
-    return jsonify({'insights': response.text})
+    top_products = []
+    for prod_id, qty in sorted(inventory_by_product.items(), key=lambda x: x[1], reverse=True)[:10]:
+        top_products.append({"id": prod_id, "quantity": qty})
+    
+    return jsonify({'products': top_products})
+
+@app.route('/api/ask_gemini', methods=['POST'])
+def ask_gemini():
+    data = request.get_json()
+    if not data or 'question' not in data:
+        return jsonify({"error": "No se proporcionó ninguna pregunta"}), 400
+    
+    question = data['question']
+    
+    # Prepare data context for Gemini
+    data_context = {
+        "warehouses_count": len(warehouses),
+        "products_count": len(products),
+        "stores_count": len(stores),
+        "warehouse_countries": list(set(w["country"] for w in warehouses)),
+        "product_brands": list(set(p["brandId"] for p in products)),
+    }
+    
+    # Get inventory by size info
+    inventory_by_size = collections.defaultdict(int)
+    for warehouse in warehouses:
+        for item in warehouse["stock"]:
+            inventory_by_size[item["size"]] += item["quantity"]
+    
+    data_context["inventory_by_size"] = [{"size": size, "quantity": qty} 
+                                        for size, qty in sorted(inventory_by_size.items(), 
+                                                              key=lambda x: x[1], reverse=True)]
+    
+    # Get top products info
+    inventory_by_product = collections.defaultdict(int)
+    for warehouse in warehouses:
+        for item in warehouse["stock"]:
+            inventory_by_product[item["productId"]] += item["quantity"]
+    
+    data_context["top_products"] = [{"id": prod_id, "quantity": qty} 
+                                   for prod_id, qty in sorted(inventory_by_product.items(), 
+                                                           key=lambda x: x[1], reverse=True)[:10]]
+    
+    # Get response from Gemini
+    response = get_response(question, data_context)
+    return jsonify({"answer": response})
+
+@app.route('/api/get_insights')
+def get_insights():
+    insights = get_data_insights(warehouses, products, stores)
+    return jsonify({"insights": insights})
 
 if __name__ == '__main__':
     app.run(debug=True) 
