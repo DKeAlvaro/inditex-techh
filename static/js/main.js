@@ -58,6 +58,9 @@ fetch('/api/inventory_by_size')
         const sizes = data.sizes.slice(0, 8); // Show only top 8 sizes
         const ctx = document.getElementById('sizeChart').getContext('2d');
         
+        // Check if we're on mobile
+        const isMobile = window.innerWidth < 768;
+        
         new Chart(ctx, {
             type: 'doughnut',
             data: {
@@ -92,7 +95,22 @@ fetch('/api/inventory_by_size')
                 maintainAspectRatio: false,
                 plugins: {
                     legend: {
-                        position: 'right',
+                        position: isMobile ? 'bottom' : 'right',
+                        labels: {
+                            boxWidth: isMobile ? 12 : 20,
+                            padding: isMobile ? 10 : 20,
+                            font: {
+                                size: isMobile ? 10 : 12
+                            }
+                        }
+                    },
+                    tooltip: {
+                        bodyFont: {
+                            size: isMobile ? 11 : 14
+                        },
+                        titleFont: {
+                            size: isMobile ? 11 : 14
+                        }
                     }
                 }
             }
@@ -192,4 +210,24 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error al cargar insights:', error);
             insightsContainer.innerHTML = '<p>No se pudieron cargar los insights.</p>';
         });
+    
+    // Listen for window resize to adjust chart display
+    window.addEventListener('resize', () => {
+        // Refresh page on orientation change for better chart rendering
+        // This is a simple solution - in a production app, we would just redraw the charts
+        if (window.innerWidth !== window.lastWidth) {
+            window.lastWidth = window.innerWidth;
+            // Small delay to let resize complete
+            setTimeout(() => {
+                if (Math.abs(window.lastOrientation - window.orientation) === 90) {
+                    window.location.reload();
+                }
+                window.lastOrientation = window.orientation;
+            }, 150);
+        }
+    });
+    
+    // Store initial state
+    window.lastWidth = window.innerWidth;
+    window.lastOrientation = window.orientation || 0;
 }); 
