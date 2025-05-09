@@ -12,6 +12,9 @@ with open("data/products.json", "r") as file:
     products = json.load(file)
 with open("data/stores.json", "r") as file:
     stores = json.load(file)
+with open("data/shipments.json", "r") as file:
+    shipments = json.load(file)
+
 
 print("\n----- BASIC STATISTICS -----")
 print(f"Number of warehouses: {len(warehouses)}")

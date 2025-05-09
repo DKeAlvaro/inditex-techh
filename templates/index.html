@@ -64,6 +64,22 @@
                 </div>
             </div>
         </section>
+        
+        <!-- New section for warehouse shipments -->
+        <section class="stats-container full-width">
+            <div class="stat-card">
+                <h2>Envíos por Almacén</h2>
+                <div class="warehouse-selection">
+                    <select id="warehouse-selector">
+                        <option value="">Seleccione un almacén</option>
+                        <!-- Options will be populated via JavaScript -->
+                    </select>
+                </div>
+                <div class="shipments-container" id="warehouse-shipments">
+                    <p class="prompt-text">Seleccione un almacén para ver sus envíos a tiendas</p>
+                </div>
+            </div>
+        </section>
     </main>
     
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>

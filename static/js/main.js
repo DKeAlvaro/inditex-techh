@@ -160,6 +160,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const askButton = document.getElementById('ask-button');
     const responseContainer = document.getElementById('gemini-response');
     const insightsContainer = document.getElementById('insights-container');
+    const warehouseSelector = document.getElementById('warehouse-selector');
+    const shipmentsContainer = document.getElementById('warehouse-shipments');
     
     // Function to ask a question
     async function askQuestion() {
@@ -210,6 +212,226 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error('Error al cargar insights:', error);
             insightsContainer.innerHTML = '<p>No se pudieron cargar los insights.</p>';
         });
+    
+    // Load warehouse options for the selector
+    fetch('/api/warehouse_shipments')
+        .then(response => response.json())
+        .then(data => {
+            const warehouses = data.almacenes || [];
+            
+            // Create options for each warehouse
+            warehouses.forEach(warehouse => {
+                const option = document.createElement('option');
+                option.value = warehouse.almacen;
+                option.textContent = `${warehouse.almacen} (${warehouse.envios.length} envíos)`;
+                warehouseSelector.appendChild(option);
+            });
+            
+            // Enable selector if warehouses are available
+            if (warehouses.length > 0) {
+                warehouseSelector.disabled = false;
+            } else {
+                shipmentsContainer.innerHTML = '<p>No hay datos de envío disponibles.</p>';
+            }
+        })
+        .catch(error => {
+            console.error('Error al cargar los almacenes:', error);
+            shipmentsContainer.innerHTML = '<p class="error">Error al cargar los datos de almacenes.</p>';
+        });
+    
+    // Handle warehouse selection
+    warehouseSelector.addEventListener('change', () => {
+        const selectedWarehouse = warehouseSelector.value;
+        
+        if (!selectedWarehouse) {
+            shipmentsContainer.innerHTML = '<p class="prompt-text">Seleccione un almacén para ver sus envíos a tiendas</p>';
+            return;
+        }
+        
+        shipmentsContainer.innerHTML = '<div class="loading"></div>';
+        
+        fetch(`/api/warehouse_shipments/${selectedWarehouse}`)
+            .then(response => response.json())
+            .then(data => {
+                const envios = data.envios || [];
+                
+                if (envios.length === 0) {
+                    shipmentsContainer.innerHTML = '<p>Este almacén no tiene envíos registrados.</p>';
+                    return;
+                }
+                
+                let shipmentHTML = '<div class="shipments-summary-container">';
+                
+                // Add summary statistics
+                shipmentHTML += `
+                    <div class="summary-stats">
+                        <div class="summary-stat">
+                            <span class="stat-value">${envios.length}</span>
+                            <span class="stat-label">Tiendas Abastecidas</span>
+                        </div>
+                `;
+                
+                // Calculate total products and unique products counts
+                let totalProducts = 0;
+                let allProductIds = new Set();
+                let allSizesCount = 0;
+                
+                envios.forEach(envio => {
+                    totalProducts += envio.productos.length;
+                    envio.productos.forEach(producto => {
+                        allProductIds.add(producto.producto);
+                        allSizesCount += producto.tallas.length;
+                    });
+                });
+                
+                // Add more stat boxes
+                shipmentHTML += `
+                        <div class="summary-stat">
+                            <span class="stat-value">${allProductIds.size}</span>
+                            <span class="stat-label">Productos Únicos</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value">${totalProducts}</span>
+                            <span class="stat-label">Total Productos Enviados</span>
+                        </div>
+                        <div class="summary-stat">
+                            <span class="stat-value">${allSizesCount}</span>
+                            <span class="stat-label">Total Tallas Enviadas</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Create a summary table showing store ID and product counts
+                shipmentHTML += `
+                    <h3>Resumen de Envíos</h3>
+                    <table class="shipments-table">
+                        <thead>
+                            <tr>
+                                <th>Tienda</th>
+                                <th>Productos Enviados</th>
+                                <th>Total Tallas</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                envios.forEach(envio => {
+                    const tiendaId = envio.tienda;
+                    const productos = envio.productos || [];
+                    
+                    // Count total sizes across all products
+                    let totalSizes = 0;
+                    productos.forEach(producto => {
+                        totalSizes += producto.tallas.length;
+                    });
+                    
+                    shipmentHTML += `
+                        <tr>
+                            <td>${tiendaId}</td>
+                            <td>${productos.length}</td>
+                            <td>${totalSizes}</td>
+                        </tr>
+                    `;
+                });
+                
+                shipmentHTML += `
+                        </tbody>
+                    </table>
+                `;
+                
+                // Add product summary - most sent products
+                let productCounts = {};
+                envios.forEach(envio => {
+                    envio.productos.forEach(producto => {
+                        const productoId = producto.producto;
+                        productCounts[productoId] = (productCounts[productoId] || 0) + 1;
+                    });
+                });
+                
+                // Convert to array and sort by frequency
+                const sortedProducts = Object.entries(productCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5); // Show top 5
+                
+                if (sortedProducts.length > 0) {
+                    shipmentHTML += `
+                        <h3>Productos Más Enviados</h3>
+                        <table class="shipments-table">
+                            <thead>
+                                <tr>
+                                    <th>ID Producto</th>
+                                    <th>Enviado a # Tiendas</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    
+                    sortedProducts.forEach(([productId, count]) => {
+                        shipmentHTML += `
+                            <tr>
+                                <td>${productId}</td>
+                                <td>${count}</td>
+                            </tr>
+                        `;
+                    });
+                    
+                    shipmentHTML += `
+                            </tbody>
+                        </table>
+                    `;
+                }
+                
+                // Add sizes summary
+                const sizeCounts = {};
+                envios.forEach(envio => {
+                    envio.productos.forEach(producto => {
+                        producto.tallas.forEach(talla => {
+                            sizeCounts[talla] = (sizeCounts[talla] || 0) + 1;
+                        });
+                    });
+                });
+                
+                // Convert to array and sort by frequency
+                const sortedSizes = Object.entries(sizeCounts)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 10); // Show top 10 sizes
+                
+                if (sortedSizes.length > 0) {
+                    shipmentHTML += `
+                        <h3>Tallas Más Enviadas</h3>
+                        <div class="sizes-bar-chart">
+                    `;
+                    
+                    // Find max count for scaling
+                    const maxCount = Math.max(...sortedSizes.map(s => s[1]));
+                    
+                    sortedSizes.forEach(([size, count]) => {
+                        const percentage = Math.round((count / maxCount) * 100);
+                        shipmentHTML += `
+                            <div class="size-bar-item">
+                                <div class="size-label">${size}</div>
+                                <div class="size-bar-container">
+                                    <div class="size-bar" style="width: ${percentage}%;">
+                                        <span class="size-count">${count}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    shipmentHTML += `
+                        </div>
+                    `;
+                }
+                
+                shipmentHTML += '</div>';
+                shipmentsContainer.innerHTML = shipmentHTML;
+            })
+            .catch(error => {
+                console.error('Error al cargar los envíos:', error);
+                shipmentsContainer.innerHTML = '<p class="error">Error al cargar los datos de envíos.</p>';
+            });
+    });
     
     // Listen for window resize to adjust chart display
     window.addEventListener('resize', () => {

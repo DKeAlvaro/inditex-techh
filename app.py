@@ -18,6 +18,14 @@ except:
     # Handle large file gracefully
     stores = []
 
+# Load shipments data
+try:
+    with open("data/shipments.json", "r") as file:
+        shipments = json.load(file)
+except:
+    # If shipments file doesn't exist or is invalid
+    shipments = {"almacenes": []}
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -119,6 +127,20 @@ def get_insights():
     # Convert markdown to HTML
     html_insights = markdown.markdown(insights)
     return jsonify({"insights": html_insights})
+
+@app.route('/api/warehouse_shipments')
+def warehouse_shipments():
+    """Return data about shipments from warehouses to stores"""
+    return jsonify(shipments)
+
+@app.route('/api/warehouse_shipments/<warehouse_id>')
+def warehouse_shipment_by_id(warehouse_id):
+    """Return shipment data for a specific warehouse"""
+    for warehouse in shipments.get("almacenes", []):
+        if warehouse["almacen"] == warehouse_id:
+            return jsonify(warehouse)
+    
+    return jsonify({"error": "Warehouse not found"}), 404
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000) 

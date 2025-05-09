@@ -6,15 +6,6 @@ Una aplicación web simple en Flask que visualiza datos de Inditex, mostrando es
 
 ![Inditex Data Visualization](readme_intro.png)
 
----
-## Características
-
-- Panel de estadísticas básicas
-- Visualización de inventario por talla
-- Top 10 productos por cantidad de inventario
-- Interfaz de consulta con IA (Gemini)
-- Insights generados por IA
-
 ## Instalación
 
 1. Clona el repositorio
