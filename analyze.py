@@ -69,9 +69,16 @@ for prod_id, qty in sorted(inventory_by_product.items(), key=lambda x: x[1], rev
     brand = product_dict.get(prod_id, {}).get("brandId", "unknown")
     print(f"  {prod_id} (Brand: {brand}): {qty}")
 
-print("\nInventory by size:")
+print("\n----- ITEMS BY SIZE -----")
+size_table = PrettyTable()
+size_table.field_names = ["Size", "Quantity", "Percentage"]
+total_quantity = sum(inventory_by_size.values())
+
 for size, qty in sorted(inventory_by_size.items(), key=lambda x: x[1], reverse=True):
-    print(f"  {size}: {qty}")
+    percentage = (qty / total_quantity) * 100
+    size_table.add_row([size, qty, f"{percentage:.2f}%"])
+
+print(size_table)
 
 # Additional statistics about stores if file is not too large
 if len(stores) <= 1000:  # Only analyze if reasonable size
