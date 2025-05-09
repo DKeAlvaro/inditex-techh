@@ -6,14 +6,13 @@ import json
 
 def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """
-    Calcula la distancia en kilómetros entre dos puntos GPS usando la fórmula de Haversine.
+    Calcula la distancia en kilÃ³metros entre dos puntos GPS usando la fÃ³rmula de Haversine.
     """
     R = 6371.0  # radio de la Tierra en km
-    ?1, ?2 = math.radians(lat1), math.radians(lat2)
-    ?? = math.radians(lat2 - lat1)
-    ?? = math.radians(lon2 - lon1)
+    lat1, lat2 = math.radians(lat1), math.radians(lat2)
+    lon1, lon2 = math.radians(lon1), math.radians(lon2)
 
-    a = math.sin(?? / 2) ** 2 + math.cos(?1) * math.cos(?2) * math.sin(?? / 2) ** 2
+    a = math.sin((lat2 - lat1) / 2) ** 2 + math.cos(lat1) * math.cos(lat2) * math.sin((lon2 - lon1) / 2) ** 2
     c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
     return R * c
@@ -75,7 +74,7 @@ def allocate_stock(
 
     Devuelve:
       - store_allocations: asignaciones por tienda
-      - warehouse_allocations: asignaciones por almacén
+      - warehouse_allocations: asignaciones por almacï¿½n
     """
     # Calcular distancias
     dist_index = []
@@ -134,11 +133,11 @@ def allocate_stock(
 
 def get_format_data():
     # Carga de datos desde archivos JSON
-    with open("warehouses.json", "r", encoding="utf-8") as f:
+    with open("data/warehouses.json", "r", encoding="utf-8") as f:
         warehouses_json = json.load(f)
-    with open("stores.json", "r", encoding="utf-8") as f:
+    with open("data/stores.json", "r", encoding="utf-8") as f:
         stores_json = json.load(f)
-    with open("products.json", "r", encoding="utf-8") as f:
+    with open("data/products.json", "r", encoding="utf-8") as f:
         products_json = json.load(f)
 
     df_wh, df_store, df_prod, df_wh_stock, df_store_demand = load_data(
@@ -149,10 +148,10 @@ def get_format_data():
         df_wh, df_store, df_wh_stock, df_store_demand
     )
 
-    # Construir la salida en el formato solicitado, limitando los 10 primeros envíos por almacén
+    # Construir la salida en el formato solicitado, limitando los 10 primeros envï¿½os por almacï¿½n
     output = {"almacenes": []}
     for wid in df_wh["id"]:
-        almac = {"almacen": wid, "envíos": []}
+        almac = {"almacen": wid, "envios": []}
         allocs = wh_allocs.get(wid, [])
         # Agrupar por tienda y producto
         by_store: Dict[str, Dict[str, set]] = {}
@@ -161,7 +160,7 @@ def get_format_data():
             pid = rec["productId"]
             size = rec["size"]
             by_store.setdefault(store, {}).setdefault(pid, set()).add(size)
-        # Construir lista de envíos y limitar a 10 primeros
+        # Construir lista de envios y limitar a 10 primeros
         envios = []
         for store, prods in by_store.items():
             envio = {"tienda": store, "productos": []}
@@ -171,12 +170,14 @@ def get_format_data():
                     "tallas": sorted(sizes)
                 })
             envios.append(envio)
-        almac["envíos"] = envios[:10]
-        if almac["envíos"]:
+        almac["envios"] = envios[:10]
+        if almac["envios"]:
             output["almacenes"].append(almac)
 
-    # Imprimir JSON final
+    with open("data/shipments.json", "w", encoding="utf-8") as f:
+        json.dump(output, f, ensure_ascii=False, indent=2)
+        
     return json.dumps(output, ensure_ascii=False, indent=2)
 
-print(get_format_data())
-
+to_print = get_format_data()
+print(to_print)
